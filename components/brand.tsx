@@ -38,14 +38,20 @@ export function Wordmark({
   const logo = onDark ? DARK_LOGO ?? LIGHT_LOGO : LIGHT_LOGO;
 
   if (logo) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
+    // eslint-disable-next-line @next/next/no-img-element
+    const img = (
       <img
         src={logo}
         alt="Llewellyn Plumbing"
-        className={cn(large ? "h-14 w-auto" : "h-9 w-auto", className)}
+        className={cn(large ? "h-12 w-auto" : "h-9 w-auto", className)}
       />
     );
+    // On a dark background with only a light (white-background) logo, sit it on a
+    // white card so it reads cleanly instead of a bare white rectangle.
+    if (onDark && !DARK_LOGO) {
+      return <span className="inline-block rounded-xl bg-white px-4 py-3 shadow-sm">{img}</span>;
+    }
+    return img;
   }
 
   // Fallback wordmark (Georgia "Llewellyn" + bold "FLEET").
