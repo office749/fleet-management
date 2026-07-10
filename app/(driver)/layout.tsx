@@ -10,7 +10,10 @@ export default async function DriverLayout({
   const user = await requireUser();
   return (
     <div className="min-h-screen bg-slate-50">
-      <header className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur">
+      <header
+        className="sticky top-0 z-10 border-b border-slate-200 bg-white/95 backdrop-blur"
+        style={{ paddingTop: "env(safe-area-inset-top)" }}
+      >
         <div className="mx-auto flex max-w-md items-center justify-between px-4 py-3">
           <Wordmark />
           <div className="flex items-center gap-2">
