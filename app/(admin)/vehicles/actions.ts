@@ -8,7 +8,8 @@ import {
   assignDriver,
 } from "@/lib/data/vehicles";
 import { createDocument, deleteDocument } from "@/lib/data/documents";
-import { vehicleSchema } from "@/lib/validation";
+import { submitMileage, adminUpdateMileage } from "@/lib/data/mileage";
+import { vehicleSchema, mileageSchema } from "@/lib/validation";
 import { saveFile, deleteFile, isAllowedUpload } from "@/lib/storage";
 import { prisma } from "@/lib/prisma";
 
@@ -111,6 +112,44 @@ export async function updateVehicleAction(
   revalidatePath(`/vehicles/${id}`);
   revalidatePath("/dashboard");
   return {};
+}
+
+export type MileageEntryState = { ok?: boolean; error?: string };
+
+/** Admin records/updates THIS WEEK's reading for a vehicle (enforces >= previous). */
+export async function setWeekMileageAction(
+  _prev: MileageEntryState,
+  formData: FormData,
+): Promise<MileageEntryState> {
+  const admin = await requireAdmin();
+  const vehicleId = String(formData.get("vehicleId"));
+  const parsed = mileageSchema.safeParse({ odometer: formData.get("odometer") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Enter a valid number." };
+  }
+  const result = await submitMileage({
+    vehicleId,
+    odometer: parsed.data.odometer,
+    enteredById: admin.id,
+    confirmed: true, // admin entry doesn't need the driver confirm prompt
+  });
+  if (!result.ok) return { error: result.error };
+  revalidatePath(`/vehicles/${vehicleId}`);
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
+/** Admin corrects any existing reading (no >= restriction — it's a correction). */
+export async function editMileageAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id"));
+  const vehicleId = String(formData.get("vehicleId"));
+  const odometer = Number(formData.get("odometer"));
+  if (Number.isFinite(odometer) && odometer >= 0) {
+    await adminUpdateMileage(id, Math.round(odometer));
+  }
+  revalidatePath(`/vehicles/${vehicleId}`);
+  revalidatePath("/dashboard");
 }
 
 export async function deleteVehicleAction(formData: FormData) {

@@ -4,13 +4,14 @@ import { ArrowLeft, FileText, Trash2, Upload } from "lucide-react";
 import { requireAdmin } from "@/lib/session";
 import { getVehicleById } from "@/lib/data/vehicles";
 import { listActiveDrivers } from "@/lib/data/users";
-import { recentMileage } from "@/lib/data/mileage";
+import { recentMileage, currentWeekMileage } from "@/lib/data/mileage";
+import { currentWeekStart, formatWeekRange } from "@/lib/week";
 import { prisma } from "@/lib/prisma";
 import { VehicleForm } from "@/components/vehicle-form";
 import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
+import { AdminMileage } from "@/components/admin-mileage";
 import { StatusBadge } from "@/components/status-badge";
 import { expiryTone, dateLabel } from "@/lib/expiry";
-import { formatMiles } from "@/lib/utils";
 import { DOC_TYPE_LABELS } from "@/lib/labels";
 import { uploadDocumentAction, deleteDocumentAction } from "../actions";
 
@@ -29,12 +30,13 @@ export default async function VehicleDetailPage({
   ]);
   if (!vehicle) notFound();
 
-  const [docs, recent] = await Promise.all([
+  const [docs, recent, thisWeek] = await Promise.all([
     prisma.document.findMany({
       where: { vehicleId: id },
       orderBy: [{ docType: "asc" }, { createdAt: "desc" }],
     }),
-    recentMileage(id, 5),
+    recentMileage(id, 6),
+    currentWeekMileage(id),
   ]);
 
   const currentDriverId = vehicle.assignments[0]?.driver.id ?? null;
@@ -112,25 +114,19 @@ export default async function VehicleDetailPage({
         </form>
       </section>
 
-      {/* Recent mileage */}
-      <section className="card p-4">
-        <h2 className="headline mb-3 text-lg">Recent mileage</h2>
-        {recent.length === 0 ? (
-          <p className="text-sm text-slate-500">No readings yet.</p>
-        ) : (
-          <ul className="divide-y divide-slate-100">
-            {recent.map((r) => (
-              <li key={r.id} className="flex items-center justify-between py-2">
-                <span className="font-semibold text-ink">{formatMiles(r.odometer)} mi</span>
-                <span className="text-sm text-slate-500">
-                  Week of {dateLabel(r.weekStart)} · {r.enteredBy.fullName}
-                  {r.needsReview ? " · flagged" : ""}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      {/* Weekly mileage — record / correct */}
+      <AdminMileage
+        vehicleId={vehicle.id}
+        weekLabel={formatWeekRange(currentWeekStart())}
+        thisWeekValue={thisWeek?.odometer ?? null}
+        recent={recent.map((r) => ({
+          id: r.id,
+          odometer: r.odometer,
+          weekStart: r.weekStart,
+          enteredBy: r.enteredBy.fullName,
+          needsReview: r.needsReview,
+        }))}
+      />
 
       {/* Danger zone */}
       <section className="card border-2 border-bad/30 p-4">
