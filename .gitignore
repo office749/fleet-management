@@ -8,6 +8,9 @@
 /out/
 next-env.d.ts
 
+# typescript build cache (must NOT be committed — breaks Railway/Nixpacks builds)
+*.tsbuildinfo
+
 # production
 /build
 
