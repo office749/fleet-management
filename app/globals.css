@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: #1b74bb;
+  --brand-dark: #114b78;
+  color-scheme: light;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  @apply bg-slate-50 text-ink antialiased;
+  font-family: Arial, Helvetica, system-ui, sans-serif;
+  /* Prevent iOS from auto-zooming on focus of inputs < 16px */
+  -webkit-text-size-adjust: 100%;
+}
+
+/* Large, thumb-friendly numeric input used for the weekly odometer entry.
+   Used outdoors in bright sun, so it's big and high-contrast. */
+.odometer-input {
+  @apply w-full rounded-2xl border-4 border-brand bg-white text-center font-bold tracking-tight text-ink;
+  font-size: 3.25rem;
+  line-height: 1;
+  padding: 1.25rem 0.5rem;
+  -moz-appearance: textfield;
+}
+.odometer-input::-webkit-outer-spin-button,
+.odometer-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Minimum 48px tap targets everywhere for gloved / one-handed use. */
+.tap {
+  min-height: 3rem;
+}
+
+@layer components {
+  .btn {
+    @apply tap inline-flex items-center justify-center gap-2 rounded-xl px-5 text-base font-bold transition active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-secondary {
+    @apply btn border-2 border-brand bg-white text-brand hover:bg-brand-50;
+  }
+  .btn-ghost {
+    @apply btn border-2 border-slate-200 bg-white text-ink hover:border-slate-300;
+  }
+  .btn-danger {
+    @apply btn bg-bad text-white hover:brightness-95;
+  }
+  .card {
+    @apply rounded-2xl border border-slate-200 bg-white shadow-sm;
+  }
+  .field {
+    @apply tap w-full rounded-xl border-2 border-slate-300 bg-white px-4 text-base text-ink outline-none focus:border-brand;
+  }
+  .label {
+    @apply mb-1 block text-sm font-bold text-slate-700;
+  }
+  .headline {
+    @apply font-serif font-bold text-brand-dark;
+  }
+}

@@ -1,0 +1,236 @@
+// Llewellyn Fleet — database schema (Postgres via Railway).
+// Prisma runs migrations automatically on deploy; you never hand-run SQL.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Users: both admins (you + office staff) and drivers.
+// Login is email + password (hashed). Drivers are created by an admin — they
+// never self-register. Deactivating keeps all historical records intact.
+// ---------------------------------------------------------------------------
+enum Role {
+  admin
+  driver
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  fullName     String
+  phone        String?
+  role         Role     @default(driver)
+  passwordHash String? // null until the user sets a password via invite
+  isActive     Boolean  @default(true)
+
+  // Invite flow: admin can generate a link with a token OR set a password directly.
+  inviteToken     String?   @unique
+  inviteExpiresAt DateTime?
+
+  assignments      VehicleAssignment[]
+  enteredMileage   MileageLog[]        @relation("EnteredBy")
+  createdServices  ServiceRecord[]     @relation("ServiceCreatedBy")
+  reportedIssues   Issue[]             @relation("IssueReporter")
+  uploadedDocs     Document[]          @relation("DocUploader")
+  notificationPref NotificationPreference?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Vehicles
+// ---------------------------------------------------------------------------
+enum VehicleStatus {
+  active
+  in_shop
+  retired
+}
+
+model Vehicle {
+  id           String        @id @default(cuid())
+  label        String // "Truck 3"
+  year         Int?
+  make         String?
+  model        String?
+  vin          String?       @unique // 17 chars, no I/O/Q (validated in app + check below)
+  licensePlate String?
+  plateState   String?
+  status       VehicleStatus @default(active)
+
+  // Insurance
+  insuranceCarrier      String?
+  insurancePolicyNumber String?
+  insuranceExpiration   DateTime? @db.Date
+
+  // Registration
+  registrationExpiration DateTime? @db.Date
+
+  // Per-vehicle service thresholds (miles), with sensible defaults.
+  oilChangeIntervalMiles Int @default(5000)
+  tireCheckIntervalMiles Int @default(50000)
+
+  assignments    VehicleAssignment[]
+  mileageLogs    MileageLog[]
+  serviceRecords ServiceRecord[]
+  documents      Document[]
+  issues         Issue[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------------------------------------------------------------------------
+// Vehicle <-> Driver assignment (join table).
+// One active driver per vehicle today, but this table supports multiple
+// drivers per vehicle later (Phase 2) with no migration.
+// A NULL unassignedAt means the assignment is currently active.
+// ---------------------------------------------------------------------------
+model VehicleAssignment {
+  id           String    @id @default(cuid())
+  vehicleId    String
+  driverId     String
+  assignedAt   DateTime  @default(now())
+  unassignedAt DateTime?
+
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver  User    @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  @@index([vehicleId])
+  @@index([driverId])
+}
+
+// ---------------------------------------------------------------------------
+// Weekly mileage. weekStart is the Monday (date-only) of the Mon–Sun week in
+// Mountain Time. One reading per vehicle per week (unique constraint).
+// needsReview + driverConfirmed handle the ">3,500 miles, is that right?" flow.
+// ---------------------------------------------------------------------------
+model MileageLog {
+  id              String   @id @default(cuid())
+  vehicleId       String
+  weekStart       DateTime @db.Date
+  odometer        Int
+  enteredById     String
+  needsReview     Boolean  @default(false)
+  driverConfirmed Boolean  @default(false)
+  enteredAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  enteredBy User    @relation("EnteredBy", fields: [enteredById], references: [id])
+
+  @@unique([vehicleId, weekStart])
+  @@index([vehicleId])
+}
+
+// ---------------------------------------------------------------------------
+// Service records. Cost stored as integer cents. Costs are ADMIN-ONLY —
+// the driver-facing data layer never selects the cost column.
+// ---------------------------------------------------------------------------
+enum ServiceType {
+  oil_change
+  tires
+  brakes
+  repair
+  inspection
+  other
+}
+
+model ServiceRecord {
+  id          String      @id @default(cuid())
+  vehicleId   String
+  serviceDate DateTime    @db.Date
+  odometer    Int?
+  type        ServiceType
+  vendor      String?
+  costCents   Int? // admin-only
+  notes       String?
+  receiptPath String? // file on the Railway volume
+  createdById String?
+
+  vehicle   Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  createdBy User?   @relation("ServiceCreatedBy", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+  @@index([type])
+}
+
+// ---------------------------------------------------------------------------
+// Documents (insurance card, registration, other). Files live on the volume;
+// only the path + metadata live in the DB. Served through an authed route.
+// ---------------------------------------------------------------------------
+enum DocType {
+  insurance
+  registration
+  other
+}
+
+model Document {
+  id             String    @id @default(cuid())
+  vehicleId      String
+  docType        DocType
+  fileName       String
+  filePath       String // path on the volume
+  mimeType       String?
+  expirationDate DateTime? @db.Date
+  uploadedById   String?
+
+  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  uploadedBy User?   @relation("DocUploader", fields: [uploadedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+}
+
+// ---------------------------------------------------------------------------
+// Driver-reported issues -> flagged on the admin dashboard.
+// ---------------------------------------------------------------------------
+enum IssueStatus {
+  open
+  resolved
+}
+
+model Issue {
+  id           String      @id @default(cuid())
+  vehicleId    String
+  reportedById String
+  category     String
+  description  String
+  photoPath    String?
+  status       IssueStatus @default(open)
+  resolvedAt   DateTime?
+
+  vehicle    Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  reportedBy User    @relation("IssueReporter", fields: [reportedById], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([vehicleId])
+  @@index([status])
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2 (schema-ready, NOT wired in v1): email/SMS reminders for missed
+// mileage + upcoming expirations. Present now so Phase 2 needs no migration.
+// ---------------------------------------------------------------------------
+model NotificationPreference {
+  id                    String  @id @default(cuid())
+  userId                String  @unique
+  weeklyMileageReminder Boolean @default(true)
+  expirationReminder    Boolean @default(true)
+  channelEmail          Boolean @default(true)
+  channelSms            Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  updatedAt DateTime @updatedAt
+}
