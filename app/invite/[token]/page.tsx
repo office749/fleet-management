@@ -14,7 +14,7 @@ export default async function InvitePage({
     <main className="flex min-h-screen flex-col items-center justify-center bg-brand-dark px-6 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex justify-center">
-          <Wordmark onDark className="text-2xl" />
+          <Wordmark onDark large />
         </div>
         <div className="card p-6">
           {user ? (

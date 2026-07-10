@@ -45,6 +45,8 @@ if (migrated && seed === "sample") {
   if (!tryRun("npx", ["tsx", "prisma/seed.ts"])) console.error("[startup] Seed failed (non-fatal).");
 } else if (migrated && seed === "admin") {
   if (!tryRun("npx", ["tsx", "prisma/bootstrap-admin.ts"])) console.error("[startup] Admin bootstrap failed (non-fatal).");
+} else if (migrated && seed === "clean") {
+  if (!tryRun("npx", ["tsx", "prisma/remove-sample.ts"])) console.error("[startup] Sample cleanup failed (non-fatal).");
 } else if (!migrated) {
   console.log("[startup] Skipping data load because migrations didn't run.");
 } else {

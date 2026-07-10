@@ -12,7 +12,7 @@ export default async function LoginPage({
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mb-3 flex justify-center">
-            <Wordmark onDark className="text-2xl" />
+            <Wordmark onDark large />
           </div>
           <p className="text-sm text-brand-100">Fleet management sign in</p>
         </div>

@@ -7,6 +7,7 @@ import { listActiveDrivers } from "@/lib/data/users";
 import { recentMileage } from "@/lib/data/mileage";
 import { prisma } from "@/lib/prisma";
 import { VehicleForm } from "@/components/vehicle-form";
+import { DeleteVehicleButton } from "@/components/delete-vehicle-button";
 import { StatusBadge } from "@/components/status-badge";
 import { expiryTone, dateLabel } from "@/lib/expiry";
 import { formatMiles } from "@/lib/utils";
@@ -129,6 +130,16 @@ export default async function VehicleDetailPage({
             ))}
           </ul>
         )}
+      </section>
+
+      {/* Danger zone */}
+      <section className="card border-2 border-bad/30 p-4">
+        <h2 className="mb-1 text-lg font-bold text-bad-fg">Delete this vehicle</h2>
+        <p className="mb-3 text-sm text-slate-600">
+          Permanently removes {vehicle.label} and its mileage, service records, and
+          documents. This cannot be undone.
+        </p>
+        <DeleteVehicleButton id={vehicle.id} label={vehicle.label} />
       </section>
     </div>
   );

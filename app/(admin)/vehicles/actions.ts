@@ -113,6 +113,35 @@ export async function updateVehicleAction(
   return {};
 }
 
+export async function deleteVehicleAction(formData: FormData) {
+  await requireAdmin();
+  const id = String(formData.get("id"));
+
+  // Collect uploaded files so we can remove them from the volume after the DB
+  // rows are gone (related records cascade-delete automatically).
+  const [docs, services, issues] = await Promise.all([
+    prisma.document.findMany({ where: { vehicleId: id }, select: { filePath: true } }),
+    prisma.serviceRecord.findMany({
+      where: { vehicleId: id, receiptPath: { not: null } },
+      select: { receiptPath: true },
+    }),
+    prisma.issue.findMany({
+      where: { vehicleId: id, photoPath: { not: null } },
+      select: { photoPath: true },
+    }),
+  ]);
+
+  await prisma.vehicle.delete({ where: { id } });
+
+  for (const d of docs) await deleteFile(d.filePath);
+  for (const s of services) if (s.receiptPath) await deleteFile(s.receiptPath);
+  for (const i of issues) if (i.photoPath) await deleteFile(i.photoPath);
+
+  revalidatePath("/vehicles");
+  revalidatePath("/dashboard");
+  redirect("/vehicles");
+}
+
 export async function uploadDocumentAction(formData: FormData) {
   const admin = await requireAdmin();
   const vehicleId = String(formData.get("vehicleId"));
