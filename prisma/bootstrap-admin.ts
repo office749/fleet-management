@@ -14,18 +14,17 @@ async function main() {
   const email = (process.env.SEED_ADMIN_EMAIL || "office@llewellynplumbing.com").toLowerCase();
   const password = process.env.SEED_ADMIN_PASSWORD || "ChangeMe!2026";
 
+  const passwordHash = await bcrypt.hash(password, 10);
   const user = await prisma.user.upsert({
     where: { email },
-    update: { role: "admin", isActive: true },
-    create: {
-      email,
-      fullName: "Office Admin",
-      role: "admin",
-      passwordHash: await bcrypt.hash(password, 10),
-    },
+    // Reset the password on every run so this doubles as a reliable
+    // "reset admin password" tool (set SEED_ADMIN_PASSWORD, redeploy).
+    update: { role: "admin", isActive: true, passwordHash },
+    create: { email, fullName: "Office Admin", role: "admin", passwordHash },
   });
   console.log(`Admin ready: ${user.email}`);
-  console.log("Sign in, then change your password under Team.");
+  console.log(`Password set to the value of SEED_ADMIN_PASSWORD.`);
+  console.log("Sign in, then change your password under Team, and remove SEED_ON_DEPLOY.");
 }
 
 main()

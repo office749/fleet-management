@@ -63,14 +63,17 @@ async function main() {
   console.log("Seeding Llewellyn Fleet…");
 
   // --- Admin + drivers (upsert by email) ---
+  // Set the admin password on BOTH create and update so redeploys reliably apply
+  // whatever SEED_ADMIN_PASSWORD says (fixes "password incorrect" after changing it).
+  const adminHash = await bcrypt.hash(ADMIN_PASSWORD, 10);
   const admin = await prisma.user.upsert({
     where: { email: ADMIN_EMAIL.toLowerCase() },
-    update: {},
+    update: { role: "admin", isActive: true, passwordHash: adminHash },
     create: {
       email: ADMIN_EMAIL.toLowerCase(),
       fullName: "Office Admin",
       role: "admin",
-      passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10),
+      passwordHash: adminHash,
     },
   });
 
