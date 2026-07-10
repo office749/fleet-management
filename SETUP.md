@@ -44,6 +44,12 @@ Open your **app service** → **Variables** tab, and add these four:
 | `AUTH_SECRET` | A long random string that signs logins. In the value box, Railway lets you generate one — or paste any 40+ random characters. Keep it secret. |
 | `FILE_STORAGE_DIR` | `/data` |
 | `AUTH_URL` | Your app's public web address (you'll get it in Part 3, step 2 — come back and fill this in). |
+| `SEED_ON_DEPLOY` | `sample` — this tells the app to automatically load 10 example vehicles + 2 drivers + your admin account the first time it starts, so you have something to click. (Prefer to start empty with only your admin? Use `admin` instead.) |
+
+> Optional: also add `SEED_ADMIN_EMAIL` (your real email) and `SEED_ADMIN_PASSWORD`
+> (a password you choose) so your admin account is created with your own login
+> instead of the default. If you skip these, the default is
+> `office@llewellynplumbing.com` / `ChangeMe!2026`.
 
 > You never put these in the code. They live here in Railway only. To change your
 > admin password later you use the app, not these settings.
@@ -63,38 +69,20 @@ Open your **app service** → **Variables** tab, and add these four:
 
 ---
 
-## Part 4 — Load your starting data
+## Part 4 — Your data loads itself (no command line!)
 
-You need at least an admin account to log in. Pick **one** of these. Both use the
-**Railway CLI** (a small helper tool) once:
+Because you set `SEED_ON_DEPLOY=sample` in Part 2, the app **automatically** creates
+your admin account and loads the sample fleet the first time it starts. There is
+**nothing to run** — it's already done by the time the deploy finishes.
 
-**Install the helper (one time):**
-- On Mac: open Terminal and run `brew install railway` (or see docs.railway.app/cli).
-- Then run `railway login` and follow the browser prompt, then `railway link` and
-  pick your project.
+Default logins (change them right away — see Part 6):
+- Admin: `office@llewellynplumbing.com` / `ChangeMe!2026`
+- Driver: `mike@example.com` / `driver1234` (Truck 1)
+- Driver: `sara@example.com` / `driver1234` (Truck 2)
 
-**Then choose:**
-
-- **Option A — Try it with sample data (recommended first):** loads 10 example
-  vehicles and 2 example drivers so you can click around immediately.
-  ```
-  railway run npm run db:seed
-  ```
-  Sample logins it prints:
-  - Admin: `office@llewellynplumbing.com` / `ChangeMe!2026`
-  - Driver: `mike@example.com` / `driver1234` (Truck 1)
-  - Driver: `sara@example.com` / `driver1234` (Truck 2)
-
-- **Option B — Start empty with just your admin account:**
-  ```
-  railway run npm run db:admin
-  ```
-  This creates one admin (`office@llewellynplumbing.com` / `ChangeMe!2026`) and no
-  vehicles.
-
-> **Change these passwords immediately** after your first login (see Part 6). You
-> can also set your own email/password first by adding `SEED_ADMIN_EMAIL` and
-> `SEED_ADMIN_PASSWORD` variables in Railway before running the command.
+> After you've logged in once and added your real vehicles, you can go back to
+> **Variables** and change `SEED_ON_DEPLOY` to `admin` (or delete it). Leaving it on
+> `sample` is harmless — it never duplicates or overwrites your real data.
 
 ---
 
@@ -144,5 +132,7 @@ already built to support these, so adding them later won't require a rebuild.
 ## Something not working?
 - **Build failed on the very first deploy:** normal before the database exists —
   finish Parts 1–2, it redeploys fine.
-- **Can't log in:** make sure you ran Part 4 to create your admin account.
+- **Can't log in:** make sure `SEED_ON_DEPLOY` is set (Part 2) and the app has
+  redeployed since — that's what creates your admin account. Check the Deploy Logs
+  for a line that says "Admin ready" or "Seed complete".
 - **A document won't open:** confirm the `/data` volume is attached (Part 1, step 3).
