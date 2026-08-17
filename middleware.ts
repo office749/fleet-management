@@ -20,6 +20,9 @@ export default auth((req) => {
   // Not logged in -> send to login (except public routes).
   if (!isLoggedIn) {
     if (isPublic) return NextResponse.next();
+    // API routes enforce their own auth and return proper 401/403 codes — don't
+    // redirect them to the login HTML page.
+    if (pathname.startsWith("/api/")) return NextResponse.next();
     const url = new URL("/login", req.nextUrl.origin);
     url.searchParams.set("next", pathname);
     return NextResponse.redirect(url);
